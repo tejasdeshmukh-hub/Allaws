@@ -189,4 +189,4 @@ Project Output
 Automatic S3 bucket creation
 Automatic Linux log backup
 S3 storage automation
-Email notification after successful backup    give me like that step  with small changes
+Email notification after successful backup
