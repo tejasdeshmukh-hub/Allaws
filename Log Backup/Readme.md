@@ -106,75 +106,17 @@ Attach these policies:
 
 ```python
 import boto3
-import time
-from botocore.exceptions import ClientError
-
-# AWS Clients
-s3 = boto3.client('s3', region_name='ap-northeast-1')
-ssm = boto3.client('ssm', region_name='ap-northeast-1')
-sns = boto3.client('sns', region_name='ap-northeast-1')
-
-# Wait until EC2 appears in SSM
-def wait_for_ssm(instance_id):
-
-    while True:
-
-        response = ssm.describe_instance_information()
-
-        ids = [
-            i['InstanceId']
-            for i in response['InstanceInformationList']
-        ]
-
-        if instance_id in ids:
-            print("SSM Online")
-            break
-
-        print("Waiting for SSM...")
-        time.sleep(15)
 
 def lambda_handler(event, context):
 
-    # Bucket Name
-    bucket_name = 'atul-cha-log-backup-12345'
+    ssm = boto3.client('ssm', region_name='ap-south-1')
 
-    # Region
-    region = 'ap-northeast-1'
+    instance_id = 'i-0bf3b2df9bb42f3c3'
+    bucket_name = 'garambadalii008'
+    log_path = "/var/log"
 
-    # EC2 Instance ID
-    instance_id = 'i-0ed33c7e6d6b9ece0'
+    command = f"aws s3 sync {log_path} s3://{bucket_name}/ec2-logs/{instance_id}/"
 
-    # SNS Topic ARN
-    sns_topic = 'arn:aws:sns:ap-northeast-1:886274844949:BackupNotification'
-
-    # Linux Log Path
-    log_path = "/var/log/"
-
-    # Create bucket if not exists
-    try:
-
-        s3.head_bucket(Bucket=bucket_name)
-
-        print("Bucket already exists")
-
-    except ClientError:
-
-        s3.create_bucket(
-            Bucket=bucket_name,
-            CreateBucketConfiguration={
-                'LocationConstraint': region
-            }
-        )
-
-        print("Bucket created successfully")
-
-    # Wait for SSM connection
-    wait_for_ssm(instance_id)
-
-    # Command to upload Linux logs to S3
-    command = f"sudo aws s3 sync {log_path} s3://{bucket_name}/ec2-logs/{instance_id}/"
-
-    # Send command to EC2
     response = ssm.send_command(
         InstanceIds=[instance_id],
         DocumentName="AWS-RunShellScript",
@@ -183,19 +125,14 @@ def lambda_handler(event, context):
         }
     )
 
-    print("Backup Command Sent")
-
-    # Send SNS Email Notification
-    sns.publish(
-        TopicArn=sns_topic,
-        Subject='Backup Success',
-        Message='EC2 logs copied successfully to S3 bucket'
-    )
+    print("Logs copied to S3")
 
     return {
         'statusCode': 200,
-        'body': 'EC2 Logs Backup Completed Successfully'
+        'body': response['Command']['CommandId']
     }
+
+
 ```
 
 ---
